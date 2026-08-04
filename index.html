@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'"
+    >
+    <meta name="theme-color" content="#0b65d8">
+    <meta
+      name="description"
+      content="Togetter系サイトを除外して、はてなブックマークの人気・新着エントリーを静かに読む個人用ニュースサイト。"
+    >
+    <title>Hatebu Minus — ノイズを引いて、読みたい記事だけ。</title>
+    <link rel="stylesheet" href="./assets/styles.css">
+    <script src="./assets/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#entries">記事一覧へ移動</a>
+
+    <header class="topbar">
+      <div class="shell topbar-inner">
+        <a class="brand" href="./" aria-label="Hatebu Minus トップ">
+          <span class="brand-mark" aria-hidden="true">H−</span>
+          <span class="brand-name">Hatebu Minus</span>
+        </a>
+        <button class="theme-button" id="theme-toggle" type="button" aria-label="ダークモードに切り替える">
+          <span class="theme-icon" aria-hidden="true">◐</span>
+          <span class="theme-label">表示</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">PERSONAL NEWS READER</p>
+          <h1 id="page-title">ノイズを引いて、<br>読みたい記事だけ。</h1>
+          <p class="intro-copy">
+            はてなブックマークの公開RSSから、指定したドメインを除いて整理。<br class="desktop-break">
+            人気と新着を、落ち着いた一画面で追えます。
+          </p>
+        </div>
+        <div class="update-card" aria-live="polite">
+          <span class="pulse-dot" aria-hidden="true"></span>
+          <div>
+            <span class="update-label">LAST UPDATED</span>
+            <time id="last-updated">読み込み中</time>
+          </div>
+        </div>
+      </section>
+
+      <nav class="category-nav" aria-label="カテゴリー">
+        <div class="category-scroll" id="category-list">
+          <span class="category-placeholder">カテゴリーを読み込み中…</span>
+        </div>
+      </nav>
+
+      <section class="filter-panel" aria-label="記事の絞り込み">
+        <div class="sort-group" aria-label="表示するエントリー">
+          <span class="control-label">表示</span>
+          <div class="segmented-control">
+            <button class="sort-button is-active" type="button" data-sort="popular" aria-pressed="true">
+              人気順
+            </button>
+            <button class="sort-button" type="button" data-sort="recent" aria-pressed="false">
+              新着順
+            </button>
+          </div>
+        </div>
+
+        <label class="filter-field filter-field-small">
+          <span class="control-label">最低ブックマーク数</span>
+          <span class="number-input-wrap">
+            <input id="minimum-bookmarks" type="number" inputmode="numeric" min="0" step="1" value="3">
+            <span>users</span>
+          </span>
+        </label>
+
+        <label class="filter-field">
+          <span class="control-label">ドメイン</span>
+          <input id="domain-search" type="search" placeholder="例: example.com" autocomplete="off">
+        </label>
+
+        <label class="filter-field filter-field-wide">
+          <span class="control-label">タイトル</span>
+          <input id="title-search" type="search" placeholder="キーワードを入力" autocomplete="off">
+        </label>
+
+        <button class="reset-button" id="reset-filters" type="button">リセット</button>
+      </section>
+
+      <section class="results" aria-labelledby="results-heading">
+        <div class="results-heading-row">
+          <div>
+            <p class="section-kicker" id="current-category">総合</p>
+            <h2 id="results-heading"><span id="result-count">—</span> 件の記事</h2>
+          </div>
+          <p class="diversity-note">同じ配信元は2件まで連続表示</p>
+        </div>
+
+        <p class="fetch-notice" id="fetch-notice" role="status" hidden></p>
+        <div class="entries" id="entries" aria-live="polite" aria-busy="true">
+          <article class="entry-card skeleton-card" aria-hidden="true">
+            <div class="skeleton skeleton-score"></div>
+            <div>
+              <div class="skeleton skeleton-meta"></div>
+              <div class="skeleton skeleton-title"></div>
+              <div class="skeleton skeleton-copy"></div>
+            </div>
+          </article>
+          <article class="entry-card skeleton-card" aria-hidden="true">
+            <div class="skeleton skeleton-score"></div>
+            <div>
+              <div class="skeleton skeleton-meta"></div>
+              <div class="skeleton skeleton-title"></div>
+              <div class="skeleton skeleton-copy"></div>
+            </div>
+          </article>
+        </div>
+        <noscript>
+          <p class="empty-state">記事の表示にはJavaScriptを有効にしてください。</p>
+        </noscript>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-inner">
+        <p><span class="footer-mark" aria-hidden="true">H−</span> 広告なし。静かに読むための個人用フィード。</p>
+        <p>
+          Data via <a href="https://b.hatena.ne.jp/" target="_blank" rel="noopener noreferrer">はてなブックマーク</a>
+          · 非公式サイト
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

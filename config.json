@@ -1,0 +1,10 @@
+{
+  "blockedDomains": [
+    "togetter.com",
+    "posfie.com",
+    "min.togetter.com"
+  ],
+  "blockedKeywords": [],
+  "minimumBookmarkCount": 3,
+  "retentionDays": 7
+}

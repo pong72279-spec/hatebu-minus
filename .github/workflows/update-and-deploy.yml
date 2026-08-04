@@ -1,0 +1,83 @@
+name: Update data and deploy Pages
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - data/entries.json
+  schedule:
+    - cron: "23 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Fetch Hatena Bookmark RSS
+        id: fetch
+        continue-on-error: true
+        run: python scripts/fetch_entries.py
+
+      - name: Report fallback to previous data
+        if: steps.fetch.outcome == 'failure'
+        run: echo '### RSS取得に失敗したため、前回のJSONをそのまま公開します。' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit refreshed data
+        id: persist
+        if: steps.fetch.outcome == 'success' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/entries.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: refresh Hatebu data"
+          git push
+
+      - name: Report data persistence warning
+        if: steps.persist.outcome == 'failure'
+        run: echo '### JSONの自動コミットに失敗しましたが、今回取得したデータのPages公開は続行します。' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build static site
+        run: python scripts/build_site.py
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
