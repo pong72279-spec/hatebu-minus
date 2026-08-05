@@ -13,8 +13,8 @@
       content="Togetter系サイトを除外して、はてなブックマークの人気・新着エントリーを静かに読む個人用ニュースサイト。"
     >
     <title>Hatebu Minus — ノイズを引いて、読みたい記事だけ。</title>
-    <link rel="stylesheet" href="./assets/styles.css">
-    <script src="./assets/app.js" defer></script>
+    <link rel="stylesheet" href="./assets/styles.css?v=2">
+    <script src="./assets/app.js?v=2" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#entries">記事一覧へ移動</a>
@@ -25,10 +25,28 @@
           <span class="brand-mark" aria-hidden="true">H−</span>
           <span class="brand-name">Hatebu Minus</span>
         </a>
-        <button class="theme-button" id="theme-toggle" type="button" aria-label="ダークモードに切り替える">
-          <span class="theme-icon" aria-hidden="true">◐</span>
-          <span class="theme-label">表示</span>
-        </button>
+        <div class="topbar-actions">
+          <div class="mobile-update" aria-live="polite">
+            <span class="mobile-update-label">更新</span>
+            <time data-last-updated="compact">読込中</time>
+          </div>
+          <button class="theme-button header-theme-toggle" data-theme-toggle type="button" aria-label="ダークモードに切り替える">
+            <span class="theme-icon" data-theme-icon aria-hidden="true">◐</span>
+            <span class="theme-label" data-theme-label>ダーク</span>
+          </button>
+          <button
+            class="menu-button"
+            id="filter-menu-toggle"
+            type="button"
+            aria-label="表示と絞り込みメニューを開く"
+            aria-controls="filter-panel"
+            aria-expanded="false"
+          >
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -46,7 +64,7 @@
           <span class="pulse-dot" aria-hidden="true"></span>
           <div>
             <span class="update-label">LAST UPDATED</span>
-            <time id="last-updated">読み込み中</time>
+            <time data-last-updated="full">読み込み中</time>
           </div>
         </div>
       </section>
@@ -57,7 +75,17 @@
         </div>
       </nav>
 
-      <section class="filter-panel" aria-label="記事の絞り込み">
+      <button class="filter-backdrop" id="filter-backdrop" type="button" aria-label="メニューを閉じる"></button>
+
+      <section class="filter-panel" id="filter-panel" aria-label="表示と記事の絞り込み">
+        <div class="filter-drawer-header drawer-only">
+          <div>
+            <span class="drawer-kicker">SETTINGS</span>
+            <h2>表示と絞り込み</h2>
+          </div>
+          <button class="drawer-close" id="filter-close" type="button" aria-label="メニューを閉じる">×</button>
+        </div>
+
         <div class="sort-group" aria-label="表示するエントリー">
           <span class="control-label">表示</span>
           <div class="segmented-control">
@@ -89,6 +117,16 @@
         </label>
 
         <button class="reset-button" id="reset-filters" type="button">リセット</button>
+
+        <div class="drawer-theme drawer-only">
+          <span class="control-label">テーマ</span>
+          <button class="drawer-theme-button" data-theme-toggle type="button" aria-label="ダークモードに切り替える">
+            <span data-theme-icon aria-hidden="true">◐</span>
+            <span data-theme-label>ダークモード</span>
+          </button>
+        </div>
+
+        <button class="drawer-apply drawer-only" id="show-articles" type="button">記事を見る</button>
       </section>
 
       <section class="results" aria-labelledby="results-heading">

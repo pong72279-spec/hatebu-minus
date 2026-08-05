@@ -5,14 +5,19 @@ const elements = {
   currentCategory: document.querySelector("#current-category"),
   entries: document.querySelector("#entries"),
   fetchNotice: document.querySelector("#fetch-notice"),
-  lastUpdated: document.querySelector("#last-updated"),
+  lastUpdated: [...document.querySelectorAll("[data-last-updated]")],
   minimumBookmarks: document.querySelector("#minimum-bookmarks"),
   domainSearch: document.querySelector("#domain-search"),
   titleSearch: document.querySelector("#title-search"),
   resetFilters: document.querySelector("#reset-filters"),
   resultCount: document.querySelector("#result-count"),
   sortButtons: [...document.querySelectorAll(".sort-button")],
-  themeToggle: document.querySelector("#theme-toggle"),
+  themeToggles: [...document.querySelectorAll("[data-theme-toggle]")],
+  filterPanel: document.querySelector("#filter-panel"),
+  filterMenuToggle: document.querySelector("#filter-menu-toggle"),
+  filterClose: document.querySelector("#filter-close"),
+  filterBackdrop: document.querySelector("#filter-backdrop"),
+  showArticles: document.querySelector("#show-articles"),
 };
 
 const state = {
@@ -31,6 +36,15 @@ const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
   hour: "2-digit",
   minute: "2-digit",
 });
+
+const compactDateFormatter = new Intl.DateTimeFormat("ja-JP", {
+  month: "numeric",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+const mobileFilterQuery = window.matchMedia("(max-width: 680px)");
 
 const compactNumberFormatter = new Intl.NumberFormat("ja-JP");
 
@@ -63,6 +77,12 @@ function formatDate(value, fallback = "日時不明") {
   if (!value) return fallback;
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? fallback : dateFormatter.format(parsed);
+}
+
+function formatCompactDate(value, fallback = "未取得") {
+  if (!value) return fallback;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? fallback : compactDateFormatter.format(parsed);
 }
 
 function categoryLabel(categoryId) {
@@ -270,12 +290,16 @@ function currentTheme() {
 
 function updateThemeButton() {
   const dark = currentTheme() === "dark";
-  elements.themeToggle.setAttribute(
-    "aria-label",
-    dark ? "ライトモードに切り替える" : "ダークモードに切り替える",
-  );
-  elements.themeToggle.querySelector(".theme-icon").textContent = dark ? "☼" : "◐";
-  elements.themeToggle.querySelector(".theme-label").textContent = dark ? "ライト" : "ダーク";
+  for (const toggle of elements.themeToggles) {
+    toggle.setAttribute(
+      "aria-label",
+      dark ? "ライトモードに切り替える" : "ダークモードに切り替える",
+    );
+    toggle.querySelector("[data-theme-icon]").textContent = dark ? "☼" : "◐";
+    toggle.querySelector("[data-theme-label]").textContent = dark
+      ? "ライトモード"
+      : "ダークモード";
+  }
 }
 
 function initializeTheme() {
@@ -284,14 +308,60 @@ function initializeTheme() {
     document.documentElement.dataset.theme = stored;
   }
   updateThemeButton();
-  elements.themeToggle.addEventListener("click", () => {
-    const next = currentTheme() === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    localStorage.setItem("hatebu-minus-theme", next);
-    updateThemeButton();
-  });
+  for (const toggle of elements.themeToggles) {
+    toggle.addEventListener("click", () => {
+      const next = currentTheme() === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("hatebu-minus-theme", next);
+      updateThemeButton();
+    });
+  }
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
     if (!document.documentElement.dataset.theme) updateThemeButton();
+  });
+}
+
+function openFilters() {
+  if (!mobileFilterQuery.matches) return;
+  elements.filterPanel.inert = false;
+  elements.filterPanel.classList.add("is-open");
+  elements.filterPanel.setAttribute("aria-hidden", "false");
+  elements.filterBackdrop.classList.add("is-active");
+  elements.filterMenuToggle.setAttribute("aria-expanded", "true");
+  document.body.classList.add("filters-open");
+  elements.filterClose.focus();
+}
+
+function closeFilters({ returnFocus = true } = {}) {
+  elements.filterPanel.classList.remove("is-open");
+  elements.filterBackdrop.classList.remove("is-active");
+  elements.filterMenuToggle.setAttribute("aria-expanded", "false");
+  document.body.classList.remove("filters-open");
+  if (mobileFilterQuery.matches) {
+    elements.filterPanel.inert = true;
+    elements.filterPanel.setAttribute("aria-hidden", "true");
+  } else {
+    elements.filterPanel.inert = false;
+    elements.filterPanel.removeAttribute("aria-hidden");
+  }
+  if (returnFocus && mobileFilterQuery.matches) elements.filterMenuToggle.focus();
+}
+
+function synchronizeFilterLayout() {
+  closeFilters({ returnFocus: false });
+}
+
+function initializeFilterDrawer() {
+  synchronizeFilterLayout();
+  elements.filterMenuToggle.addEventListener("click", openFilters);
+  elements.filterClose.addEventListener("click", () => closeFilters());
+  elements.filterBackdrop.addEventListener("click", () => closeFilters());
+  elements.showArticles.addEventListener("click", () => closeFilters());
+  mobileFilterQuery.addEventListener("change", synchronizeFilterLayout);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && elements.filterPanel.classList.contains("is-open")) {
+      closeFilters();
+    }
   });
 }
 
@@ -315,7 +385,9 @@ function bindControls() {
 }
 
 function showLoadError(error) {
-  elements.lastUpdated.textContent = "データを読み込めませんでした";
+  for (const time of elements.lastUpdated) {
+    time.textContent = time.dataset.lastUpdated === "compact" ? "取得失敗" : "データを読み込めませんでした";
+  }
   elements.resultCount.textContent = "0";
   elements.entries.setAttribute("aria-busy", "false");
   const empty = makeElement("div", "empty-state error-state");
@@ -331,8 +403,11 @@ function showLoadError(error) {
 async function initialize() {
   initializeTheme();
   bindControls();
+  initializeFilterDrawer();
   try {
-    const response = await fetch("./data/entries.json", { cache: "no-store" });
+    const response = await fetch(`./data/entries.json?v=${Date.now()}`, {
+      cache: "no-store",
+    });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     if (!data || !Array.isArray(data.articles) || !Array.isArray(data.categories)) {
@@ -341,12 +416,12 @@ async function initialize() {
     state.data = data;
     state.minimumBookmarks = Number(data.filters?.minimumBookmarkCount) || 0;
     elements.minimumBookmarks.value = String(state.minimumBookmarks);
-    elements.lastUpdated.textContent = formatDate(
-      data.lastSuccessfulUpdateAt,
-      "初回データ取得前",
-    );
-    if (data.lastSuccessfulUpdateAt) {
-      elements.lastUpdated.dateTime = data.lastSuccessfulUpdateAt;
+    for (const time of elements.lastUpdated) {
+      time.textContent =
+        time.dataset.lastUpdated === "compact"
+          ? formatCompactDate(data.lastSuccessfulUpdateAt, "未取得")
+          : formatDate(data.lastSuccessfulUpdateAt, "初回データ取得前");
+      if (data.lastSuccessfulUpdateAt) time.dateTime = data.lastSuccessfulUpdateAt;
     }
     const failedFeeds = Number(data.fetchSummary?.failedFeeds) || 0;
     if (failedFeeds > 0) {
