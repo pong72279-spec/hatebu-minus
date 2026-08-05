@@ -45,6 +45,7 @@ const compactDateFormatter = new Intl.DateTimeFormat("ja-JP", {
 });
 
 const mobileFilterQuery = window.matchMedia("(max-width: 680px)");
+const RETURN_STATE_KEY = "hatebu-minus-return-state";
 
 const compactNumberFormatter = new Intl.NumberFormat("ja-JP");
 
@@ -64,13 +65,52 @@ function safeHttpUrl(value) {
   }
 }
 
-function configureExternalLink(link, value) {
+function configureExternalLink(link, value, { newTab = true } = {}) {
   const safeUrl = safeHttpUrl(value);
   if (!safeUrl) return false;
   link.href = safeUrl;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
+  if (newTab) {
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+  } else {
+    link.removeAttribute("target");
+    link.removeAttribute("rel");
+  }
   return true;
+}
+
+function saveReturnState() {
+  try {
+    sessionStorage.setItem(
+      RETURN_STATE_KEY,
+      JSON.stringify({
+        category: state.category,
+        mode: state.mode,
+        minimumBookmarks: state.minimumBookmarks,
+        domainQuery: state.domainQuery,
+        titleQuery: state.titleQuery,
+        scrollY: window.scrollY,
+        savedAt: Date.now(),
+      }),
+    );
+  } catch {
+    // Browser back still works even when session storage is unavailable.
+  }
+}
+
+function consumeReturnState() {
+  try {
+    const serialized = sessionStorage.getItem(RETURN_STATE_KEY);
+    sessionStorage.removeItem(RETURN_STATE_KEY);
+    if (!serialized) return null;
+    const restored = JSON.parse(serialized);
+    if (!restored || Date.now() - Number(restored.savedAt) > 60 * 60 * 1000) {
+      return null;
+    }
+    return restored;
+  } catch {
+    return null;
+  }
 }
 
 function formatDate(value, fallback = "日時不明") {
@@ -205,7 +245,11 @@ function createEntryCard(article) {
   const readLink = makeElement("a", "read-link", "記事を読む ↗");
   const commentLink = makeElement("a", "comment-link", "コメントを見る ↗");
   configureExternalLink(readLink, article.url);
-  configureExternalLink(commentLink, article.commentUrl);
+  const commentOpensInSameTab = mobileFilterQuery.matches;
+  configureExternalLink(commentLink, article.commentUrl, {
+    newTab: !commentOpensInSameTab,
+  });
+  if (commentOpensInSameTab) commentLink.addEventListener("click", saveReturnState);
   actions.append(readLink, commentLink);
   footer.append(articleUrl, actions);
 
@@ -414,8 +458,27 @@ async function initialize() {
       throw new Error("Invalid data format");
     }
     state.data = data;
-    state.minimumBookmarks = Number(data.filters?.minimumBookmarkCount) || 0;
+    const restored = consumeReturnState();
+    const validCategory = data.categories.some(
+      (category) => category.id === restored?.category,
+    );
+    state.category = validCategory ? restored.category : "all";
+    state.mode = ["popular", "recent"].includes(restored?.mode)
+      ? restored.mode
+      : "popular";
+    state.minimumBookmarks = Number.isFinite(Number(restored?.minimumBookmarks))
+      ? Math.max(0, Number(restored.minimumBookmarks))
+      : Number(data.filters?.minimumBookmarkCount) || 0;
+    state.domainQuery = typeof restored?.domainQuery === "string" ? restored.domainQuery : "";
+    state.titleQuery = typeof restored?.titleQuery === "string" ? restored.titleQuery : "";
     elements.minimumBookmarks.value = String(state.minimumBookmarks);
+    elements.domainSearch.value = state.domainQuery;
+    elements.titleSearch.value = state.titleQuery;
+    for (const button of elements.sortButtons) {
+      const active = button.dataset.sort === state.mode;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    }
     for (const time of elements.lastUpdated) {
       time.textContent =
         time.dataset.lastUpdated === "compact"
@@ -431,6 +494,9 @@ async function initialize() {
     }
     renderCategories();
     render();
+    if (Number.isFinite(Number(restored?.scrollY))) {
+      requestAnimationFrame(() => window.scrollTo(0, Math.max(0, Number(restored.scrollY))));
+    }
   } catch (error) {
     showLoadError(error);
   }
